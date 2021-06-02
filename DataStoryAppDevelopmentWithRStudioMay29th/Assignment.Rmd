@@ -1,0 +1,142 @@
+---
+title: "AssignmentSubmission"
+author: "Chi Xinning"
+date: "5/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Pre
+```{r}
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+```
+
+
+## Q1
+There are some extra columns which are not essential to our analysis. Remove the following columns: “score_rank”,“userscore”,and “tags”. Name the resulting dataset as “steam_sub”.
+```{r}
+steam_raw<-read.csv('steamspy_data.csv',stringsAsFactors = FALSE)
+steam_sub <- steam_raw %>% select(-c("score_rank","userscore","tags"))
+```
+
+## Q2
+### Q2.1
+Convert "" value to NAs and show NAs in each column
+
+Use `colSums` function to check NAs
+```{r}
+steam_sub[steam_sub==""] <-NA
+colSums(is.na(steam_sub))
+```
+### Q2.2
+1. drop NAs
+```{r}
+steam <- steam_sub %>% drop_na(publisher)
+```
+2. check NAs
+```{r}
+colSums(is.na(steam))
+```
+Difference is clearly showned in the above repeated `colSums(is.na(steam))`.
+
+### Q3 Find the top 3 publishers with the most number of games which had a discount.
+
+```{r}
+steam %>% filter(discount>0) %>% group_by(publisher) %>% summarise(No.games=n()) %>% arrange(-No.games) %>% top_n(3) %>% select(publisher)
+```
+
+### Q4 Steam itself was developed by Valve Corporation, but it also lists games from third-party publishers to players. 
+
+Find the percentage of games which are not published by Valve on Steam. 
+```{r}
+ nrow(steam[steam$publisher!="Valve",])/nrow(steam)
+```
+
+Also find the top 5 publishers who publish the most games on Steam.
+
+Same idea as Q3:
+```{r}
+steam %>% group_by(publisher) %>% summarise(No.games=n()) %>% arrange(-No.games) %>% top_n(5) %>% select(publisher)
+```
+
+### Q5
+
+Create a new column in the dataset to caculate the positive/(positive + negative) ratio of each game in “steam_clean” dataset
+```{r}
+steam_clean <- steam %>% mutate(ratio = positive/(positive+negative))
+```
+
+create another column “rating” according to the ratio: 
+
+1. <=0.4 as “negative”, 
+2. 0.4(non-inclusive) to 0.7 as “mixed”, 
+3. >0.7 as “positive”. 
+
+Additonally: If a game has has a rating ratio of 0, it is still considered “negative”. Return “No Review” if a game has 0 “Positive” and “Negative”. Such condition is the at  most outside layer in the `ifelse` loop.
+
+
+```{r}
+steam_clean$rating <- ifelse(steam_clean$positive==0 & steam_clean$negative==0,"No Review",ifelse(steam_clean$ratio<=0.4,"negative",ifelse((steam_clean$ratio>0.4)&(steam_clean$ratio<0.7),"mixed","positive")))
+```
+
+### Q6  For the games of different rating as labeled in Q5, what is the maximum, minimum and average price for games of each rating?
+
+```{r}
+steam_clean %>% group_by(rating) %>% summarise(Maximum.price=max(price),Minimum.price=min(price),Average.price=mean(price))
+```
+
+
+### Q7 In this dataset, an owner is someone who purchase the game on Steam. If we take the average number of owners indicated for each game, (eg. we take the number of owners as 10,000 if it is indicated as “0 .. 20,000”),what is the revenue received by each game? Store the revenue for each game in a new column “revenue”.
+
+Hint: 1. Replace the dot in the strings with semicolon first to get split; 
+
+```{r}
+steam_clean$owners <-gsub('[.]', ';', steam_clean$owners)
+```
+
+2. Check out “seperate” function from tidyverse package to split the string into two columns, or try using strsplit and “apply” suite of function (we will cover the “apply” suite in later sessions); 
+
+```{r}
+steam_clean$owners <- as.character(steam_clean$owners)
+steam_clean <- separate(steam_clean,owners, into= c("owners.lower","discard1","owners.higher","discard2"),sep= ";")
+steam_clean$discard1<-NULL
+steam_clean$discard2<-NULL
+```
+
+3. Convert the character in the resulted columns to numerics. For example, after spliting “0 .. 20000” into “0” and “20000”, convert them to the numeric form of 0 and 20000.
+
+```{r}
+steam_clean$owners.higher <- gsub('[,]',"",steam_clean$owners.higher)
+steam_clean$owners.lower <- gsub('[,]',"",steam_clean$owners.lower)
+steam_clean$owners.lower <- as.numeric(steam_clean$owners.lower)
+steam_clean$owners.higher <- as.numeric(steam_clean$owners.higher)
+steam_clean$revenue <-(steam_clean$owners.lower+steam_clean$owners.higher)/2
+```
+
+### Q8 Continuing from Q5, for the genres which contain more than 500 games, which genres has the top 5 highest average revenue per game? 
+
+Note: if there are more than 1 label in the genre entry, you can treat them as one genre. For example, “Action” is one genre, and “Action, Adventure, Indie” is another genre.
+```{r}
+steam_clean$Avg.revenue.bygame=sum(steam_clean$revenue)/nrow(steam_clean)
+set1 <-steam_clean %>% group_by(genre) %>% mutate(No.games.bygenre=n()) %>% filter(No.games.bygenre > 500) %>% arrange(-Avg.revenue.bygame) %>% top_n(5) %>% select(genre)
+
+unique(set1)
+```
+
+
+### Q9 Based on data from Knoema.com, China, USA and Japan are the three largest gaming market in the world in 2019. How many games support at least two out of three among Simplified Chinese, English and Japanese, which are the most spoken languages in these countries?
+
+```{r}
+library(tidyverse)
+res<-grepl("*English*",steam_clean$languages)
+res1<-grepl("*Japanese*",steam_clean$languages)
+res2<-grepl("*Simplified Chinese*",steam_clean$languages)
+ans<-res+res1+res2
+length(ans[ans>=2])
+
+```
