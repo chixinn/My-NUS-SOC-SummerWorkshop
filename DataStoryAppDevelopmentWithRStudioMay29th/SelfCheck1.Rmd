@@ -1,0 +1,66 @@
+---
+title: "Self-Check-1"
+author: "Chi Xinning"
+date: "6/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Self-Check1
+### Q1:Create a row vector of number 1 to 20, and repeat the sequence in the same vector. (1,2..,20,1..,20)
+
+MyOwn:
+```{r}
+rep(seq(1,20,1),2)
+```
+
+Teachers:
+```{r}
+a<-rep(c(1:20),2)
+```
+
+### Q2:Create one string of numbers from 1 to 10 with no space in between. You should get “12345678910”. (Hint: use ?paste0 command to find out whether the function has arguments which helps with the task.)
+
+【窝不会嘤嘤:(
+```{r}
+paste0(1:10,collapse="")
+```
+### Q3:Label the vector you created in Q1 using cut function as follows: 1 - 7 as “good”, 8-15 as “great” and 16-20 as “excellent”.
+
+注意这里面的`cut`函数和`factor`类型，神奇。【窝不会嘤嘤:(
+```{r}
+ cut(a,c(0,7,15,20),labels=c('goods','great','execellent'))
+```
+
+### Q4:
+
+MyOwn:
+```{r}
+matrix(1:48,nrow=6)
+```
+
+Teachers:(Only as a Reference)
+```{r}
+matrix(1:48,nrow=6, ncol=8, byrow=FALSE)
+```
+
+
+### Q5:Replace all “a” and “A”s with “o”s in the string “12A34ab56Abc78abcd”,regardless of its case. (Hint: use ?gsub command to find out whether the function has arguments which helps with the task.)
+
+呜呜呜英文help文档阅读障碍，不如搜索引擎好用wuwuwu
+```{r}
+gsub("a","o","12A34ab56Abc78abcd",ignore.case = TRUE)
+```
+
+### Q6:What is the 111th character in this string “Rapidly changing work environments and economy needs are pushing organisations to seek new competencies from fresh hires. There is now greater ambiguity in the economy and national boundaries, and a greater use of ICT, data analytics and other emerging technologies. A growing number will also veer from the traditional job market to launch start-ups or work as free-lancers.” 
+
+(Hint: Search online if you don’t know a function that does this already.)
+```{r}
+obstr <- "Rapidly changing work environments and economy needs are pushing organisations to seek new competencies from fresh hires. There is now greater ambiguity in the economy and national boundaries, and a greater use of ICT, data analytics and other emerging technologies. A growing number will also veer from the traditional job market to launch start-ups or work as free-lancers."
+substr(obstr,111,111)
+```
+
+

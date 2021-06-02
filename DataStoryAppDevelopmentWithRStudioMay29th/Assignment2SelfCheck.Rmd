@@ -1,0 +1,224 @@
+---
+title: "SelfCheck2"
+author: "Chi Xinning"
+date: "6/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Assignment2
+### DataSets Disription
+
+The Fantasy Premier League (FPL) is an online game whereby players of the game (known as FPL managers) play by picking real life football players to form their teams. The points that the managers earn will be dependent on the real-life performance of the football players in real-life Premier League matches.
+
+For example, if you (as a FPL manager) picked player X in your team and player X ends up scoring a goal in the real-life Premier League match that he played, he earns points for you.
+Another example would be that you picked a goalkeeper and he ends up keeping a clean sheet (in other words, he did not let in any goals in the real life match he played), he will also earn points for you.
+
+Managers also incur a cost when they pick a player for their FPL team. For example, player X may cost you 10 million in FPL game credits if you want to select him for your team. All FPL managers have 100 million FPL game credits to spend on acquiring 15 players.
+
+### Pre:DataLoading & Library
+```{r}
+epl_data <- read.csv('~/Desktop/NUS-SoC-SummerWorkshop-2021/DataStoryAppDevelopmentWithRStudioMay29th/完整版/Session 3/epldata_final.csv',stringsAsFactors = FALSE)
+library(dplyr)
+```
+### Q1
+There are some extra columns which are not essential to our analysis. Remove the following columns: club_id, big_club, new_foreign.
+Name the resulting dataset as “epldata_sub”.
+
+那个一口气删的代码我忘了，只能想起这个了:D
+```{r}
+epl_dataTmp <- epl_data
+epl_dataTmp$club_id <- NULL
+epl_dataTmp$big_club <- NULL
+epl_dataTmp$new_foreign <- NULL
+epldata_subTmp <- epl_dataTmp
+```
+呜呜呜为啥老想不起来R里面有`-c`这个功能呢？
+```{r}
+epldata_sub <- epl_data %>% select(-c('club_id','big_club','new_foreign'))
+head(epldata_sub,5)
+```
+
+
+### Q2.1
+There are some missing data in the dataset, which could be due to input errors. Display the number of missing/NA values for each column of the dataset.
+Hint: Consider using the is.na function
+```{r}
+colSums(is.na(epldata_sub))
+```
+### Q2.2
+Remove all records with missing/NA values and store the derived dataframe as “epldata_cleaned”.
+
+```{r}
+epldata_cleaned <- na.omit(epldata_sub)
+colSums(is.na(epldata_cleaned))
+```
+### Q2.3 
+1. Notice that the column “fpl_sel” is not stored in the correct data type. 
+It has a character data type instead of a numeric data type, which will hinder our analysis of the data. A sample of the values in the “fpl_sel” column is shown below.Convert the “fpl_sel” column to the correct data type. For example, “17.10%” should be stored as 17.1 in numeric form.
+2. Also, rename the column “fpl_sel” to “fpl_sel_in_percentage”.
+
+一般这种类型转换的时候都要把特殊字符去掉：
+
+```{r}
+epldata_cleaned$fpl_sel<-gsub("%","",epldata_cleaned$fpl_sel)
+epldata_cleaned$fpl_sel <- as.numeric(epldata_cleaned$fpl_sel)
+```
+注意这里的rename:
+```{r}
+colnames(epldata_cleaned)[colnames(epldata_cleaned) == "fpl_sel"] <- "fpl_sel_in_percentage" 
+```
+
+
+- Clean the data and rename the column within the existing “epldata_cleaned” dataframe. Do
+not create or assign a new dataframe variable.
+- Print the first 5 rows of the dataframe after you have cleaned the data and renamed the
+column.
+
+```{r}
+head(epldata_cleaned,5)
+```
+
+### Q2.4
+As shown below, notice that the column ‘club’ contains football club names that are not stored properly. Spaces in the club names are represented by ‘+’ instead of a space, which is not what we want. ** Clean up the club names in the ‘club’ column by replacing the ‘+’ with a space.**
+For example, “West+Ham” should be converted to “West Ham”.
+
+Clean the data within the existing “epldata_cleaned” dataframe. Do not create or assign a new dataframe variable.
+
+为啥这个`+`外面有转义符号呢
+```{r}
+epldata_cleaned$club<-gsub("\\+"," ",epldata_cleaned$club)
+```
+
+Print all unique club names from the ‘club’ column after you have cleaned them.
+
+啊这个print Unique的函数已经忘了第二次了
+```{r}
+unique(epl_data$club)
+```
+真神奇 为啥里面还有remaining的加号呢
+
+### Q3
+Find the players who are categorized as defenders in the FPL game (position_cat = 3) but are actually playing as midfielders in real life (position of AM, CM, DM, RM, LM).
+
+Display the player’s name, real life position and position_cat in the output dataframe.
+我当然是这样 但事实错的
+```{r}
+re <- epldata_cleaned %>% filter((position_cat==3) & (position=='AM' ||position=='CM'||position=='DM'|| position=='RM' || position=='LM' ))
+```
+R语言中in某一vector的表达：
+```{r}
+misfielder_position <- c('AM','CM','DM','RM','LM')
+q3 <- epldata_cleaned %>% select(name,position,position_cat) %>% filter ((position_cat==3)&(position %in% misfielder_position))
+q3
+```
+### Q4.1
+**For each position_cat**, find the most selected football player (based on fpl_sel_in_percentage) and find how many percent of FPL managers have acquired the player.
+In your output, display the position_cat, the name of the player and the percentage of FPL managers who selected the football player in their FPL teams.
+
+** 注意这里`name[which.max]`的用法**：所以这题就很重要，好神奇，我用的并不熟这个地方。
+
+下面这个代码因为对没有被select的列进行操作而报错：
+
+q4_1 <- epldata_cleaned %>% select(name,position_cat,club,fpl_value) %>% group_by(position_cat) %>% summarise(Max_Player=name[which.max(fpl_sel_in_percentage)],max_fpl_sel_in_percent=max(fpl_sel_in_percentage))
+
+```{r}
+q4_1 <- epldata_cleaned %>% select(name, position_cat, club, fpl_sel_in_percentage) %>% group_by(position_cat) %>% summarise(Max_Player=name[which.max(fpl_sel_in_percentage)],max_fpl_sel_in_percent=max(fpl_sel_in_percentage)) 
+```
+
+
+
+### Q4.2
+**For each football club**, find the club’s most selected football player (based on fpl_sel_in_percentage) in **each position_cat**.[所以这里要groupBy `footballClub`和`positionCat`]
+```{r}
+q4_2 <- epldata_cleaned %>% select(name, club, position_cat, club, fpl_sel_in_percentage) %>% group_by(club,position_cat) %>% summarise(Max_Player=name[which.max(fpl_sel_in_percentage)],max_fpl_sel_in_percent=max(fpl_sel_in_percentage)) 
+```
+
+In your output, display the club name, the position_cat, the name of the player and the percentage of FPL managers who selected the football player in their FPL teams.
+Display all results as a single dataframe. Display only the 1st 10 rows of your dataframe.
+
+
+### Q5
+The “fpl_points” column gives us information about the FPL points that a football player earned in the previous season.
+
+**For each position of football players (position_cat 1 to 4)**, find the maximum, minimum, 25th percentile and 75th percentile fpl_points.
+
+Display your output as a single dataframe.
+
+Hint: Consider using the quantile function.
+
+epldata_cleaned %>% group_by(position) %>% summarise(maxfpl=max(fpl_points),minfpl=min(fpl_points),25percent=quantile(fpl_points,c(0.25)),75percent=quantile(fpl_points,c(0.75)))
+
+果然，`25percent`的变量命名直接写在`Rmd`里就会报错了。
+```{r}
+epldata_cleaned %>% group_by(position_cat) %>% summarise(maxfpl=max(fpl_points),minfpl=min(fpl_points),firstpercent=quantile(fpl_points,c(0.25)),thirdpercent=quantile(fpl_points,c(0.75)))
+```
+
+### Q6 The cost efficiency ratio
+
+The cost efficiency ratio is computed by taking “market_value” divided by “fpl_value”.
+
+
+1. Compute the cost efficiency ratio for each player and assign the values to a new column in the dataframe named “cost_efficiency_ratio”. Ensure that the cost efficiency ratios are rounded off to 2 decimal places.
+
+```{r}
+epldata_cleaned$cost_efficiency_ratio <- round(epldata_cleaned$market_value/epldata_cleaned$fpl_value,digits=2)
+```
+2. R语言中写`if-else`嵌套
+```{r}
+epldata_cleaned$cost_efficiency_category <- ifelse(epldata_cleaned$cost_efficiency_ratio<=2.5,"Overvalued",ifelse((epldata_cleaned$cost_efficiency_ratio>2.5)&(epldata_cleaned$cost_efficiency_ratio<5),"Fair","Undervalued"))
+```
+```{r}
+q6_1 <- epldata_cleaned %>% select(name, position_cat, cost_efficiency_ratio, cost_efficiency_category)
+head(q6_1,10)
+```
+
+### Q6.2
+Which position_cat has the greatest number of players who are “Undervalued” in terms of cost efficiency? How many players in that position_cat are deemed to be “Undervalued”?
+
+Display the position_cat identified as well as the number of players who are “Undervalued” in that position_cat.
+
+先把每个position_cat 的个数选出来
+```{r}
+ q6_1 %>% filter(cost_efficiency_category=='Undervalued') %>% group_by(position_cat) %>%  summarise(No.ofplayers=n()) 
+```
+再排序选第一个
+```{r}
+q6_1 %>% filter(cost_efficiency_category=='Undervalued') %>% group_by(position_cat) %>%  summarise(No.ofplayers=n())  %>% arrange(-No.ofplayers) %>% top_n(1)
+```
+老师的参考代码：
+```{r}
+#Filter and obtain only the players who are undervalued
+q6_2 <- q6_1[q6_1$cost_efficiency_category=='Undervalued',]
+
+#Groupby and find the count of players
+q6_2 <- q6_2%>%group_by(position_cat) %>% summarise(count=n()) %>% arrange(desc(count)) %>% .[1,] 
+
+q6_2
+
+```
+
+
+
